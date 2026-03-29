@@ -1,0 +1,8 @@
+datasets/
+exps/
+.envrc
+__pycache__/
+*.pyc
+.DS_Store
+*.pt
+*.cbm

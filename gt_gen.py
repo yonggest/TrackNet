@@ -23,18 +23,19 @@ def create_gt_images(path_input, path_output, size, variance, width, height):
         for clip in clips:
             print('game = {}, clip = {}'.format(game, clip))
 
-            path_out_game = os.path.join(path_output, game)
-            if not os.path.exists(path_out_game):
-                os.makedirs(path_out_game)
+            path_out_gt_clip = os.path.join(path_output, 'gts', game, clip)
+            if not os.path.exists(path_out_gt_clip):
+                os.makedirs(path_out_gt_clip)
 
-            path_out_clip = os.path.join(path_out_game, clip)    
-            if not os.path.exists(path_out_clip):
-                os.makedirs(path_out_clip)  
+            path_out_img_clip = os.path.join(path_output, 'images', game, clip)
+            if not os.path.exists(path_out_img_clip):
+                os.makedirs(path_out_img_clip)
 
             path_labels = os.path.join(os.path.join(path_input, game, clip), 'Label.csv')
-            labels = pd.read_csv(path_labels)    
+            labels = pd.read_csv(path_labels)
             for idx in range(labels.shape[0]):
                 file_name, vis, x, y, _ = labels.loc[idx, :]
+                # save GT heatmap
                 heatmap = np.zeros((height, width, 3), dtype=np.uint8)
                 if vis != 0:
                     x = int(x)
@@ -45,8 +46,12 @@ def create_gt_images(path_input, path_output, size, variance, width, height):
                                     temp = gaussian_kernel_array[i+size][j+size]
                                     if temp > 0:
                                         heatmap[y+j,x+i] = (temp,temp,temp)
-
-                cv2.imwrite(os.path.join(path_out_clip, file_name), heatmap) 
+                cv2.imwrite(os.path.join(path_out_gt_clip, file_name), heatmap)
+                # copy original frame
+                src = os.path.join(path_input, game, clip, file_name)
+                img = cv2.imread(src)
+                if img is not None:
+                    cv2.imwrite(os.path.join(path_out_img_clip, file_name), img)
                 
 def create_gt_labels(path_input, path_output, train_rate=0.7):
     df = pd.DataFrame()
@@ -60,7 +65,7 @@ def create_gt_labels(path_input, path_output, train_rate=0.7):
             labels_target = labels[2:]
             labels_target.loc[:, 'path2'] = list(labels['path1'][1:-1])
             labels_target.loc[:, 'path3'] = list(labels['path1'][:-2])
-            df = df.append(labels_target)
+            df = pd.concat([df, labels_target])
     df = df.reset_index(drop=True) 
     df = df[['path1', 'path2', 'path3', 'gt_path', 'x-coordinate', 'y-coordinate', 'status', 'visibility']]
     df = df.sample(frac=1)
